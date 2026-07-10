@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Ai Art Gallery",
+    "slug": "ai-art-gallery-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "scheme": "ai-art-gallerymobile",
+    "platforms": ["ios", "android", "web"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bookchaowalit.ai-art-gallerymobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.bookchaowalit.ai-art-gallerymobile"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
