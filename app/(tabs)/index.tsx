@@ -1,125 +1,137 @@
-import { StyleSheet, Text, View, ScrollView, Pressable } from "react-native";
+import { useMemo, useState } from "react";
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Link } from "expo-router";
+import { allTags, filterArtworks, SAMPLE_ARTWORKS, toggleFavorite, type Artwork } from "../../lib/gallery";
 
-export default function HomeScreen() {
+const TAGS = allTags(SAMPLE_ARTWORKS);
+
+export default function GalleryScreen() {
+  const [query, setQuery] = useState("");
+  const [tag, setTag] = useState<string | null>(null);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+
+  const artworks = useMemo(
+    () => filterArtworks(SAMPLE_ARTWORKS, { query, tag, favorites, favoritesOnly }),
+    [query, tag, favorites, favoritesOnly],
+  );
+
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Ai Art Gallery</Text>
-        <Text style={styles.subtitle}>Ai Art Gallery — Mobile app (expo)</Text>
-      </View>
-
-      <View style={styles.cardGrid}>
-        <FeatureCard
-          icon="rocket"
-          title="Getting Started"
-          description="Welcome to the mobile version. Start building your experience."
+    <FlatList
+      style={styles.container}
+      data={artworks}
+      keyExtractor={(a) => a.id}
+      keyboardShouldPersistTaps="handled"
+      ListHeaderComponent={
+        <View style={styles.filters}>
+          <TextInput
+            style={styles.input}
+            placeholder="Search title, prompt or model"
+            value={query}
+            onChangeText={setQuery}
+            accessibilityLabel="Search artworks"
+          />
+          <View style={styles.chips}>
+            <Chip label="All" active={tag === null} onPress={() => setTag(null)} />
+            {TAGS.map((t) => (
+              <Chip key={t} label={t} active={tag === t} onPress={() => setTag(tag === t ? null : t)} />
+            ))}
+          </View>
+          <Chip
+            label={`Favorites only (${favorites.size})`}
+            active={favoritesOnly}
+            onPress={() => setFavoritesOnly(!favoritesOnly)}
+          />
+        </View>
+      }
+      ListEmptyComponent={<Text style={styles.empty}>No artworks match.</Text>}
+      renderItem={({ item }) => (
+        <ArtworkCard
+          artwork={item}
+          favorite={favorites.has(item.id)}
+          onToggleFavorite={() => setFavorites(toggleFavorite(favorites, item.id))}
         />
-        <FeatureCard
-          icon="code"
-          title="Tech Stack"
-          description="Built with Expo, React Native, and TypeScript."
-        />
-        <FeatureCard
-          icon="phone-portrait"
-          title="Cross-Platform"
-          description="Runs on iOS, Android, and Web from a single codebase."
-        />
-      </View>
-
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          Part of Chaowalit Greepoke's 101 Portfolio Projects
-        </Text>
-        <Link href="https://bookchaowalit.com" asChild>
-          <Pressable>
-            <Text style={styles.link}>bookchaowalit.com</Text>
-          </Pressable>
-        </Link>
-      </View>
-    </ScrollView>
+      )}
+    />
   );
 }
 
-function FeatureCard({
-  icon,
-  title,
-  description,
+function ArtworkCard({
+  artwork,
+  favorite,
+  onToggleFavorite,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  description: string;
+  artwork: Artwork;
+  favorite: boolean;
+  onToggleFavorite: () => void;
 }) {
   return (
     <View style={styles.card}>
-      <Ionicons name={icon} size={28} color="#4A90D9" />
-      <Text style={styles.cardTitle}>{title}</Text>
-      <Text style={styles.cardDescription}>{description}</Text>
+      <View
+        style={[styles.swatch, { backgroundColor: artwork.palette[0] }]}
+        accessibilityRole="image"
+        accessibilityLabel={`Color preview for ${artwork.title}`}
+      >
+        <View style={[styles.swatchAccent, { backgroundColor: artwork.palette[1] }]} />
+      </View>
+      <View style={styles.cardBody}>
+        <View style={styles.titleRow}>
+          <Text style={styles.cardTitle}>{artwork.title}</Text>
+          <Pressable
+            onPress={onToggleFavorite}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel={favorite ? `Remove ${artwork.title} from favorites` : `Add ${artwork.title} to favorites`}
+          >
+            <Ionicons name={favorite ? "heart" : "heart-outline"} size={24} color="#E84393" />
+          </Pressable>
+        </View>
+        <Text style={styles.prompt}>“{artwork.prompt}”</Text>
+        <Text style={styles.meta}>
+          {artwork.model} · {artwork.createdAt} · {artwork.tags.join(", ")}
+        </Text>
+      </View>
     </View>
   );
 }
 
+function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.chip, active && styles.chipActive]}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+    >
+      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F5F5",
-  },
-  header: {
-    backgroundColor: "#4A90D9",
-    padding: 24,
-    paddingTop: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "rgba(255,255,255,0.85)",
-    lineHeight: 20,
-  },
-  cardGrid: {
-    padding: 16,
-    gap: 12,
-  },
-  card: {
+  container: { flex: 1, backgroundColor: "#F5F5F5" },
+  filters: { padding: 16, gap: 10 },
+  input: {
     backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    alignItems: "center",
-    gap: 8,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
-  },
-  cardDescription: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  footer: {
-    padding: 24,
-    alignItems: "center",
-    gap: 8,
-  },
-  footerText: {
-    fontSize: 12,
-    color: "#999",
-  },
-  link: {
-    fontSize: 14,
-    color: "#4A90D9",
-    fontWeight: "500",
-  },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: { alignSelf: "flex-start", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, backgroundColor: "#E3ECF7" },
+  chipActive: { backgroundColor: "#4A90D9" },
+  chipText: { color: "#2A5A8C", fontWeight: "500" },
+  chipTextActive: { color: "#fff" },
+  empty: { textAlign: "center", color: "#777", marginTop: 32 },
+  card: { backgroundColor: "#fff", borderRadius: 12, marginHorizontal: 16, marginBottom: 12, overflow: "hidden", elevation: 2 },
+  swatch: { height: 120, justifyContent: "flex-end", alignItems: "flex-end" },
+  swatchAccent: { width: 90, height: 90, borderTopLeftRadius: 90 },
+  cardBody: { padding: 14, gap: 4 },
+  titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  cardTitle: { fontSize: 17, fontWeight: "600", color: "#333" },
+  prompt: { fontSize: 14, color: "#555", fontStyle: "italic" },
+  meta: { fontSize: 12, color: "#888" },
 });
