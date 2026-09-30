@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allTags, filterArtworks, SAMPLE_ARTWORKS, toggleFavorite } from "./gallery";
+import { allTags, filterArtworks, normalizeText, SAMPLE_ARTWORKS, toggleFavorite, type Artwork } from "./gallery";
 
 describe("allTags", () => {
   it("returns unique sorted lowercase tags", () => {
@@ -34,5 +34,29 @@ describe("toggleFavorite", () => {
     expect(one.has("a1")).toBe(true);
     expect(empty.size).toBe(0);
     expect(toggleFavorite(one, "a1").has("a1")).toBe(false);
+  });
+});
+
+describe("pass 3 edge cases", () => {
+  const base = SAMPLE_ARTWORKS[0];
+  it("dedupes tags that differ only by zero-width characters, BOM, case or spacing", () => {
+    const arts: Artwork[] = [
+      { ...base, id: "x", tags: ["night", " Night ", "night\u200B", "\uFEFFnight"] },
+    ];
+    expect(allTags(arts)).toEqual(["night"]);
+    expect(filterArtworks(arts, { tag: "NIGHT\u200B" })).toHaveLength(1);
+  });
+  it("sorts by actual instant, not by string, when timestamps carry offsets", () => {
+    const early: Artwork = { ...base, id: "early", createdAt: "2025-03-02T01:00:00+07:00" }; // 2025-03-01T18:00Z
+    const late: Artwork = { ...base, id: "late", createdAt: "2025-03-01T20:00:00Z" };
+    expect(filterArtworks([early, late], {}).map((a) => a.id)).toEqual(["late", "early"]);
+  });
+  it("puts unparseable dates last instead of first", () => {
+    const bad: Artwork = { ...base, id: "bad", createdAt: "not a date" };
+    const ok: Artwork = { ...base, id: "ok", createdAt: "2025-01-01" };
+    expect(filterArtworks([bad, ok], {}).map((a) => a.id)).toEqual(["ok", "bad"]);
+  });
+  it("matches decomposed accents in search", () => {
+    expect(normalizeText("Cafe\u0301")).toBe(normalizeText("Café"));
   });
 });

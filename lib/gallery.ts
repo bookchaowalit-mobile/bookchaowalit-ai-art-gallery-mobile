@@ -18,19 +18,33 @@ export type GalleryFilter = {
   favorites?: ReadonlySet<string>;
 };
 
+/** Zero-width characters and BOM that make visually identical tags differ. */
+const INVISIBLE = /[\u200B-\u200D\u2060\uFEFF]/g;
+
+/** Canonical form for tags and search: NFKC, invisible characters removed, trimmed, lowercase. */
+export function normalizeText(text: string): string {
+  return text.normalize("NFKC").replace(INVISIBLE, "").trim().toLowerCase();
+}
+
 export function allTags(artworks: Artwork[]): string[] {
-  return [...new Set(artworks.flatMap((a) => a.tags.map((t) => t.toLowerCase())))].sort();
+  return [...new Set(artworks.flatMap((a) => a.tags.map(normalizeText)))].filter(Boolean).sort();
+}
+
+/** Milliseconds for an ISO date/time; unparseable dates sort last. */
+function createdAtMs(iso: string): number {
+  const ms = Date.parse(iso);
+  return Number.isNaN(ms) ? -Infinity : ms;
 }
 
 export function filterArtworks(artworks: Artwork[], filter: GalleryFilter): Artwork[] {
-  const q = (filter.query ?? "").trim().toLowerCase();
-  const tag = filter.tag?.toLowerCase() ?? null;
+  const q = normalizeText(filter.query ?? "");
+  const tag = filter.tag ? normalizeText(filter.tag) : null;
   const favs = filter.favorites ?? new Set<string>();
   return artworks
-    .filter((a) => !q || [a.title, a.prompt, a.model].some((s) => s.toLowerCase().includes(q)))
-    .filter((a) => !tag || a.tags.some((t) => t.toLowerCase() === tag))
+    .filter((a) => !q || [a.title, a.prompt, a.model].some((s) => normalizeText(s).includes(q)))
+    .filter((a) => !tag || a.tags.some((t) => normalizeText(t) === tag))
     .filter((a) => !filter.favoritesOnly || favs.has(a.id))
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    .sort((a, b) => createdAtMs(b.createdAt) - createdAtMs(a.createdAt) || a.title.localeCompare(b.title));
 }
 
 /** Returns a new set with `id` added or removed. */

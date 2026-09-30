@@ -49,3 +49,12 @@ Score: 7/10 (was 6/10) — favorites now survive restarts; still sample data and
 - Accessibility: tag chips and profile links get descriptive labels/roles.
 - Advisories: `overrides.postcss ^8.5.28` clears the high-severity PostCSS advisory in Expo metro-config (minor bump). Remaining `image-size` (metro, bundler-only), `uuid` (via `xcode`) and `decode-uri-component` (via `query-string@7`) need an Expo SDK major upgrade; deliberately not auto-fixed.
 - Verified: typecheck, lint, 15 vitest tests, Android `expo export` bundle.
+
+## Done in this pass (pass 3)
+
+Score: 7.5/10 (was 7/10) — edge-case hunt in `lib/gallery.ts`.
+
+- Bug: artworks were ordered by string comparison of `createdAt`, so timestamps with offsets sorted wrongly and an unparseable date jumped to the top. Sorting now uses the parsed instant (invalid dates last, title tie-break).
+- Bug: tags differing only by zero-width space, BOM, spacing or case produced duplicate chips; tags and search now go through `normalizeText` (NFKC, invisible chars stripped, trimmed, lowercase), which also makes decomposed accents searchable.
+- a11y: favourite toggle exposes `accessibilityState.selected`.
+- Verified: typecheck, lint, 19 vitest tests, Android `expo export`.

@@ -87,6 +87,7 @@ function ArtworkCard({
             hitSlop={12}
             accessibilityRole="button"
             accessibilityLabel={favorite ? `Remove ${artwork.title} from favorites` : `Add ${artwork.title} to favorites`}
+            accessibilityState={{ selected: favorite }}
           >
             <Ionicons name={favorite ? "heart" : "heart-outline"} size={24} color="#E84393" />
           </Pressable>
