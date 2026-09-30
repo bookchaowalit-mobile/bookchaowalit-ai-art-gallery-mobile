@@ -49,3 +49,9 @@ export const SAMPLE_ARTWORKS: Artwork[] = [
   { id: "a5", title: "Midnight Market", prompt: "floating market lanterns at midnight, watercolor", model: "Midjourney v6", tags: ["cityscape", "watercolor", "night"], palette: ["#182C61", "#F8EFBA"], createdAt: "2025-05-05" },
   { id: "a6", title: "Moss Giant", prompt: "gentle moss-covered giant in an ancient forest", model: "DALL-E 3", tags: ["fantasy", "nature"], palette: ["#2C3A47", "#55E6C1"], createdAt: "2025-03-28" },
 ];
+
+/** Drops stored favorite ids that no longer match an artwork (and duplicates). */
+export function knownFavorites(ids: string[], artworks: Artwork[]): Set<string> {
+  const known = new Set(artworks.map((a) => a.id));
+  return new Set(ids.filter((id) => known.has(id)));
+}

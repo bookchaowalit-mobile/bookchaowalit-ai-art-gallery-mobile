@@ -1,15 +1,20 @@
 import { useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { allTags, filterArtworks, SAMPLE_ARTWORKS, toggleFavorite, type Artwork } from "../../lib/gallery";
+import { allTags, filterArtworks, knownFavorites, SAMPLE_ARTWORKS, toggleFavorite, type Artwork } from "../../lib/gallery";
+import { isStringArray, valueCodec } from "../../lib/persist";
+import { usePersistentState } from "../../lib/usePersistentState";
 
 const TAGS = allTags(SAMPLE_ARTWORKS);
+const idsCodec = valueCodec(isStringArray);
+const boolCodec = valueCodec((v: unknown): v is boolean => typeof v === "boolean");
 
 export default function GalleryScreen() {
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState<string | null>(null);
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [favoriteIds, setFavoriteIds] = usePersistentState<string[]>("gallery.favorites.v1", [], idsCodec);
+  const [favoritesOnly, setFavoritesOnly] = usePersistentState("gallery.favoritesOnly.v1", false, boolCodec);
+  const favorites = useMemo(() => knownFavorites(favoriteIds, SAMPLE_ARTWORKS), [favoriteIds]);
 
   const artworks = useMemo(
     () => filterArtworks(SAMPLE_ARTWORKS, { query, tag, favorites, favoritesOnly }),
@@ -32,9 +37,9 @@ export default function GalleryScreen() {
             accessibilityLabel="Search artworks"
           />
           <View style={styles.chips}>
-            <Chip label="All" active={tag === null} onPress={() => setTag(null)} />
+            <Chip label="All" a11yLabel="Show all tags" active={tag === null} onPress={() => setTag(null)} />
             {TAGS.map((t) => (
-              <Chip key={t} label={t} active={tag === t} onPress={() => setTag(tag === t ? null : t)} />
+              <Chip key={t} label={t} a11yLabel={`Filter by tag ${t}`} active={tag === t} onPress={() => setTag(tag === t ? null : t)} />
             ))}
           </View>
           <Chip
@@ -49,7 +54,7 @@ export default function GalleryScreen() {
         <ArtworkCard
           artwork={item}
           favorite={favorites.has(item.id)}
-          onToggleFavorite={() => setFavorites(toggleFavorite(favorites, item.id))}
+          onToggleFavorite={() => setFavoriteIds([...toggleFavorite(favorites, item.id)])}
         />
       )}
     />
@@ -95,12 +100,24 @@ function ArtworkCard({
   );
 }
 
-function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+function Chip({
+  label,
+  a11yLabel,
+  active,
+  onPress,
+}: {
+  label: string;
+  a11yLabel?: string;
+  active: boolean;
+  onPress: () => void;
+}) {
   return (
     <Pressable
       onPress={onPress}
       style={[styles.chip, active && styles.chipActive]}
       accessibilityRole="button"
+      accessibilityLabel={a11yLabel ?? label}
+
       accessibilityState={{ selected: active }}
     >
       <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
